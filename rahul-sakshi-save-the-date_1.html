@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rahul &amp; Sakshi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+  /*
+    Design plan
+    Layout: a two-act title sequence — a fixed full-screen splash (a hand-
+    sketched line-art flower draws itself in and blooms, then "Are You
+    Ready." fades in) dissolves into a centered, single-column save-the-date
+    card, closing with a crumpled paper note that unfolds flat to reveal the
+    day's quote. A thin corner frame + film grain + vignette run throughout
+    to keep the whole thing feeling like a monochrome title card rather than
+    a web form.
+    Color — a deliberate two-print world, switched by the page's own toggle
+    rather than the viewer's OS setting (a "screening" print and a "paper"
+    print, like a film shown at night versus its poster by daylight):
+      --bg        screen/page ground
+      --fg        ink against that ground (ivory film-white by default)
+      --fg-dim    muted secondary ink
+      --hair      faint hairline, for rules & frame
+      --paper / --paper-ink   the note's own paper + ink, constant in both
+                               prints so it always reads as a physical note
+    Type:
+      --font-display  Bodoni Moda — high-contrast editorial serif, numerals & names
+      --font-script   Alex Brush — the handwritten "title card" flourish
+      --font-label    Jost — small caps utility type, labels & captions
+  */
+  :root{
+    --bg:#0a0908;
+    --fg:#f4efe4;
+    --fg-dim:#8f897c;
+    --hair:rgba(244,239,228,.18);
+    --paper:#f4efe4;
+    --paper-ink:#17130f;
+    --paper-crease:rgba(10,9,8,.18);
+    --paper-highlight:rgba(255,255,255,.12);
+    --font-display:'Bodoni Moda','Didot','Times New Roman',serif;
+    --font-script:'Alex Brush','Brush Script MT',cursive;
+    --font-label:'Jost','Helvetica Neue',Arial,sans-serif;
+    color-scheme:dark;
+  }
+  :root[data-mode="light"]{
+    --bg:#f5f1e8;
+    --fg:#17130f;
+    --fg-dim:#756c5d;
+    --hair:rgba(23,19,15,.2);
+    --paper:#131210;
+    --paper-ink:#f6f1e6;
+    --paper-crease:rgba(246,241,230,.2);
+    --paper-highlight:rgba(255,255,255,.07);
+    color-scheme:light;
+  }
+
+  html,body{height:100%;margin:0;}
+  body{background:var(--bg);color:var(--fg);overflow-x:hidden;}
+  *{box-sizing:border-box;}
+  ::selection{background:var(--fg);color:var(--bg);}
+  a{color:inherit;}
+  button{font:inherit;}
+  :focus-visible{outline:2px solid var(--fg);outline-offset:3px;}
+
+  noscript .splash,noscript #splash{display:none !important;}
+
+  /* ambient layers */
+  .grain{position:fixed;inset:0;z-index:4;pointer-events:none;background:#fff;filter:url(#filmGrain);opacity:.045;mix-blend-mode:overlay;}
+  .vignette{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse at 50% 42%, transparent 42%, rgba(0,0,0,.62) 100%);transition:background 1.1s ease;}
+  :root[data-mode="light"] .grain{background:#000;opacity:.03;}
+  :root[data-mode="light"] .vignette{background:radial-gradient(ellipse at 50% 42%, transparent 50%, rgba(23,19,15,.16) 100%);}
+  .frame{position:fixed;inset:0;z-index:5;pointer-events:none;}
+  .corner{position:absolute;width:20px;height:20px;border-color:var(--hair);border-style:solid;border-width:0;}
+  .corner.tl{top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;border-top-width:1px;border-left-width:1px;}
+  .corner.tr{top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;border-top-width:1px;border-right-width:1px;}
+  .corner.bl{bottom:calc(env(safe-area-inset-bottom,0px) + 14px);left:14px;border-bottom-width:1px;border-left-width:1px;}
+  .corner.br{bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:14px;border-bottom-width:1px;border-right-width:1px;}
+
+  /* ---------- splash ---------- */
+  #splash{
+    position:fixed;inset:0;z-index:50;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:clamp(1.25rem,5vh,2.5rem);
+    background:var(--bg);
+    cursor:pointer;
+    transition:opacity .9s ease;
+  }
+  #splash.hide{opacity:0;pointer-events:none;}
+  #splash[hidden]{display:none;}
+
+  .skip{
+    position:absolute;top:calc(env(safe-area-inset-top,0px) + 18px);right:18px;z-index:2;
+    background:transparent;border:1px solid var(--hair);color:var(--fg-dim);
+    font-family:var(--font-label);font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;
+    padding:.55em 1.1em;border-radius:999px;cursor:pointer;
+  }
+  .skip:hover,.skip:focus-visible{color:var(--fg);border-color:var(--fg-dim);}
+
+  .flower{position:relative;width:clamp(122px,30vw,172px);height:clamp(122px,30vw,172px);margin:0 auto;display:block;}
+  .flower.sway{animation:flowerSway 4.8s ease-in-out infinite;}
+  @keyframes flowerSway{0%,100%{transform:rotate(-1.5deg);}50%{transform:rotate(1.5deg);}}
+  .flower svg{display:block;width:100%;height:100%;overflow:visible;}
+  .flower-line{fill:none;stroke:var(--fg);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+  .flower-vein{stroke-width:1;opacity:.75;}
+  .flower-anther{fill:var(--fg);opacity:0;}
+
+  .splash-copy{display:flex;flex-direction:column;align-items:center;gap:.08em;text-align:center;}
+  .w-are,.w-you{
+    font-family:var(--font-display);font-weight:600;font-size:clamp(2.4rem,10vw,4.6rem);
+    letter-spacing:.05em;text-transform:uppercase;line-height:.92;margin:0;
+    opacity:0;transform:translateY(16px);animation:riseIn .85s ease forwards;
+  }
+  .w-are{animation-delay:2s;}
+  .w-you{animation-delay:2.3s;}
+  .w-ready{
+    font-family:var(--font-script);font-weight:400;font-size:clamp(2.8rem,12vw,5.6rem);
+    margin:.05em 0 0;color:var(--fg);
+    opacity:0;transform:translateY(16px);animation:riseIn .95s ease forwards;animation-delay:2.7s;
+  }
+  @keyframes riseIn{to{opacity:1;transform:translateY(0);}}
+
+  .splash-hint{
+    position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
+    font-family:var(--font-label);font-size:.64rem;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--fg-dim);opacity:0;animation:riseIn .8s ease forwards;animation-delay:3.7s;
+  }
+
+  /* ---------- main card ---------- */
+  #main{
+    position:relative;z-index:1;min-height:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:clamp(.85rem,2.6vh,1.5rem);text-align:center;
+    padding-block:clamp(3rem,10vh,6rem);padding-inline:1.25rem;
+  }
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .9s ease,transform .9s ease;transition-delay:var(--d,0s);}
+  #main.show .reveal{opacity:1;transform:translateY(0);}
+
+  .eyebrow{font-family:var(--font-label);font-weight:400;font-size:.76rem;letter-spacing:.34em;text-transform:uppercase;color:var(--fg-dim);margin:0;}
+  .headline{font-family:var(--font-script);font-weight:400;font-size:clamp(3.1rem,13vw,6.6rem);margin:.1em 0 0;line-height:.95;color:var(--fg);text-wrap:balance;}
+
+  .dates{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:clamp(.5rem,3vw,1.3rem);font-family:var(--font-display);margin-top:.2em;}
+  .date-block{display:flex;flex-direction:column;align-items:center;line-height:1;}
+  .date-block .num{font-size:clamp(2.4rem,8.5vw,3.8rem);font-weight:600;font-variant-numeric:tabular-nums;}
+  .date-block .mo{font-family:var(--font-label);font-size:.66rem;letter-spacing:.26em;color:var(--fg-dim);margin-top:.35em;}
+  .amp{font-family:var(--font-script);font-size:clamp(1.5rem,4.5vw,2.1rem);color:var(--fg-dim);align-self:center;}
+  .year{font-family:var(--font-label);font-size:.8rem;letter-spacing:.24em;color:var(--fg-dim);align-self:flex-end;margin-left:.2rem;}
+
+  .divider{width:60px;height:1px;background:var(--hair);margin-block:.3em;}
+
+  .names{font-family:var(--font-display);font-style:italic;font-weight:500;font-size:clamp(1.5rem,5.6vw,2.4rem);margin:0;letter-spacing:.01em;}
+  .amp-sm{font-family:var(--font-script);font-style:normal;padding:0 .14em;color:var(--fg-dim);}
+
+  .countdown{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:clamp(.4rem,2vw,.85rem);margin-top:.3em;}
+  .unit{display:flex;flex-direction:column;align-items:center;min-width:3rem;}
+  .unit .val{font-family:var(--font-display);font-weight:600;font-size:clamp(1.5rem,5.6vw,2.2rem);font-variant-numeric:tabular-nums;}
+  .unit .lbl{font-family:var(--font-label);font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--fg-dim);margin-top:.25em;}
+  .colon{font-family:var(--font-display);font-size:1.3rem;color:var(--fg-dim);transform:translateY(-3px);}
+
+  .footer{font-family:var(--font-label);font-size:.7rem;letter-spacing:.06em;color:var(--fg-dim);margin:.6rem 0 0;}
+
+  /* ---------- daily quote: a crumpled note that unfolds flat ---------- */
+  .quote-widget{display:flex;flex-direction:column;align-items:center;gap:.8rem;margin-top:.3em;}
+  .quote-eyebrow{font-family:var(--font-label);font-size:.68rem;letter-spacing:.16em;color:var(--fg-dim);margin:0;text-align:center;}
+  .quote-eyebrow em{font-style:italic;font-family:var(--font-display);}
+
+  .wad-btn{all:unset;display:block;cursor:pointer;}
+  .wad-outer{display:block;animation:wadWiggle 4.2s ease-in-out infinite;}
+  .quote-widget.revealed .wad-outer{animation:none;}
+  @keyframes wadWiggle{0%,100%{transform:rotate(-2deg);}50%{transform:rotate(2deg);}}
+
+  .wad-shape{
+    display:block;position:relative;margin:0 auto;overflow:hidden;
+    width:min(272px,78vw);height:11.25rem;
+    background:var(--paper);color:var(--paper-ink);
+    clip-path:polygon(42% 16%,58% 12%,73% 20%,81% 37%,75% 51%,83% 64%,66% 79%,47% 83%,29% 75%,17% 60%,23% 39%,30% 22%);
+    box-shadow:0 10px 20px rgba(0,0,0,.4),inset 7px -9px 15px rgba(0,0,0,.22),
+               inset -10px 8px 13px rgba(0,0,0,.15),inset 3px 3px 7px var(--paper-highlight);
+    transform:rotate(-5deg);
+    transition:clip-path .95s cubic-bezier(.32,.85,.22,1),box-shadow .6s ease,transform .95s cubic-bezier(.32,.85,.22,1),
+               background-color .5s ease,color .5s ease;
+  }
+  .quote-widget.revealed .wad-shape{
+    clip-path:polygon(10% 0%,50% 0%,90% 0%,100% 14%,100% 50%,100% 86%,90% 100%,50% 100%,10% 100%,0% 86%,0% 50%,0% 14%);
+    box-shadow:0 10px 22px rgba(0,0,0,.35);
+    transform:rotate(0deg);
+  }
+
+  .crease{position:absolute;height:1px;background:var(--paper-crease);transition:opacity .6s ease,background-color .5s ease;}
+  .crease.c1{top:36%;left:19%;width:48%;transform:rotate(19deg);}
+  .crease.c2{top:57%;left:31%;width:42%;transform:rotate(-15deg);}
+  .crease.c3{top:70%;left:14%;width:34%;transform:rotate(9deg);}
+  .quote-widget.revealed .crease{opacity:0;}
+
+  .wad-label-wrap{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:0 16%;font-family:var(--font-script);font-size:clamp(1.1rem,4.2vw,1.32rem);
+    transition:opacity .4s ease;
+  }
+  .quote-widget.revealed .wad-label-wrap{opacity:0;}
+
+  .quote-inner{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:.55em;padding:1.15rem 1.3rem;text-align:center;overflow-y:auto;
+    opacity:0;transition:opacity .3s ease;
+  }
+  .quote-widget.revealed .quote-inner{opacity:1;transition:opacity .55s ease .35s;}
+  .quote-text{font-family:var(--font-display);font-style:italic;font-weight:500;font-size:clamp(.9rem,3.2vw,1.08rem);line-height:1.5;}
+  .quote-meta{font-family:var(--font-label);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--paper-ink);opacity:.56;}
+
+  /* ---------- theme toggle ---------- */
+  .theme-toggle{display:flex;justify-content:center;margin-top:.5em;}
+  .theme-switch{all:unset;display:flex;align-items:center;gap:.6em;cursor:pointer;padding:.3em;}
+  .theme-switch-track{
+    display:block;width:38px;height:21px;border-radius:999px;border:1px solid var(--hair);
+    background:transparent;position:relative;transition:background .4s ease,border-color .4s ease;
+  }
+  .theme-switch-thumb{
+    display:block;position:absolute;top:50%;left:2px;width:15px;height:15px;border-radius:50%;
+    background:var(--fg);transform:translate(0,-50%);
+    transition:transform .45s cubic-bezier(.4,.1,.2,1),background .4s ease;
+  }
+  .theme-switch[aria-checked="true"] .theme-switch-thumb{transform:translate(17px,-50%);}
+  .theme-switch-label{font-family:var(--font-label);font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--fg-dim);}
+  .theme-switch:hover .theme-switch-track,.theme-switch:focus-visible .theme-switch-track{border-color:var(--fg-dim);}
+
+  @media (prefers-reduced-motion: reduce){
+    .flower.sway{animation:none;}
+    .flower-line{transition:none !important;}
+    .flower-anther{transition:none !important;opacity:1;}
+    .w-are,.w-you,.w-ready,.splash-hint{animation-duration:.01s;animation-delay:0s;opacity:1;transform:none;}
+    .reveal{transition-duration:.01s;}
+    .wad-outer{animation:none;}
+    .wad-shape,.crease,.wad-label-wrap,.quote-inner{transition-duration:.01s !important;transition-delay:0s !important;}
+  }
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="frame" aria-hidden="true">
+  <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+</div>
+
+<section id="splash" role="img" aria-label="Opening title sequence for Rahul and Sakshi's wedding">
+  <button type="button" class="skip" id="skipBtn">Skip</button>
+  <div class="flower" id="flower" aria-hidden="true">
+    <svg viewBox="0 0 200 200">
+      <g id="flowerPetals"></g>
+      <g id="flowerVeins"></g>
+      <g id="flowerStamens"></g>
+    </svg>
+  </div>
+  <div class="splash-copy">
+    <p class="w-are">Are</p>
+    <p class="w-you">You</p>
+    <p class="w-ready">ready.</p>
+  </div>
+  <p class="splash-hint">Tap anywhere to continue</p>
+</section>
+
+<main id="main" aria-hidden="true">
+  <p class="eyebrow reveal" style="--d:0s">A Wedding, In Two Acts</p>
+  <h1 class="headline reveal" style="--d:.25s">Save the Date</h1>
+
+  <div class="dates reveal" style="--d:.55s">
+    <div class="date-block"><span class="num">04</span><span class="mo">Dec</span></div>
+    <span class="amp">&amp;</span>
+    <div class="date-block"><span class="num">05</span><span class="mo">Dec</span></div>
+    <span class="year">2026</span>
+  </div>
+
+  <div class="divider reveal" style="--d:.8s" aria-hidden="true"></div>
+
+  <p class="names reveal" style="--d:.95s">Rahul <span class="amp-sm">&amp;</span> Sakshi</p>
+
+  <div class="countdown reveal" style="--d:1.2s" id="countdown" aria-live="polite">
+    <div class="unit"><span class="val" id="cd-d">00</span><span class="lbl">Days</span></div>
+    <span class="colon" aria-hidden="true">:</span>
+    <div class="unit"><span class="val" id="cd-h">00</span><span class="lbl">Hrs</span></div>
+    <span class="colon" aria-hidden="true">:</span>
+    <div class="unit"><span class="val" id="cd-m">00</span><span class="lbl">Min</span></div>
+    <span class="colon" aria-hidden="true">:</span>
+    <div class="unit"><span class="val" id="cd-s">00</span><span class="lbl">Sec</span></div>
+  </div>
+  <div class="quote-widget reveal" id="quoteWidget" style="--d:1.4s">
+    <p class="quote-eyebrow">A new quote, every day till <em>&ldquo;I do&rdquo;</em></p>
+    <button type="button" class="wad-btn" id="paperBtn" aria-expanded="false" aria-controls="quoteInner">
+      <span class="wad-outer">
+        <span class="wad-shape">
+          <span class="crease c1" aria-hidden="true"></span>
+          <span class="crease c2" aria-hidden="true"></span>
+          <span class="crease c3" aria-hidden="true"></span>
+          <span class="wad-label-wrap" aria-hidden="true">Unwrap me</span>
+          <span class="quote-inner" id="quoteInner" aria-live="polite">
+            <span class="quote-text" id="quoteText"></span>
+            <span class="quote-meta">Today&rsquo;s Quote</span>
+          </span>
+        </span>
+      </span>
+    </button>
+  </div>
+
+  <p class="footer reveal" style="--d:1.65s">With love, Daga &amp; Singhania Family</p>
+
+  <div class="theme-toggle reveal" style="--d:1.85s">
+    <button type="button" class="theme-switch" id="themeToggle" role="switch" aria-checked="false" aria-label="Switch to light mode">
+      <span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span>
+      <span class="theme-switch-label" id="themeToggleLabel">Light Mode</span>
+    </button>
+  </div>
+</main>
+
+<noscript>
+  <style>
+    #splash{display:none !important;}
+    #main{opacity:1 !important;}
+    #main .reveal{opacity:1 !important;transform:none !important;}
+    .quote-widget{display:none !important;}
+    .theme-toggle{display:none !important;}
+  </style>
+</noscript>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="filmGrain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="noise" seed="3"></feTurbulence>
+    <feColorMatrix in="noise" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0"></feColorMatrix>
+  </filter>
+</svg>
+
+<script>
+(function(){
+  "use strict";
+  var splash = document.getElementById('splash');
+  var main = document.getElementById('main');
+  var skipBtn = document.getElementById('skipBtn');
+  var revealed = false;
+  var reduce = false;
+  try{ reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+
+  function revealMain(){
+    if(revealed) return;
+    revealed = true;
+    splash.classList.add('hide');
+    main.removeAttribute('aria-hidden');
+    main.classList.add('show');
+    setTimeout(function(){ try{ splash.hidden = true; }catch(e){} }, reduce ? 50 : 950);
+  }
+
+  var AUTO_MS = reduce ? 700 : 4700;
+  var timer = setTimeout(revealMain, AUTO_MS);
+
+  function skip(e){ if(e) e.stopPropagation(); clearTimeout(timer); revealMain(); }
+  skipBtn.addEventListener('click', skip);
+  splash.addEventListener('click', skip);
+  splash.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ') skip(e); });
+
+  /* countdown to 4 Dec 2026, 8:00 PM IST */
+  var target = new Date('2026-12-04T20:00:00+05:30').getTime();
+  var elD = document.getElementById('cd-d'),
+      elH = document.getElementById('cd-h'),
+      elM = document.getElementById('cd-m'),
+      elS = document.getElementById('cd-s');
+
+  function pad(n){ n = Math.max(0, n); return (n < 10 ? '0' : '') + n; }
+
+  function tick(){
+    var diff = target - Date.now();
+    if(diff <= 0){
+      elD.textContent = '00'; elH.textContent = '00'; elM.textContent = '00'; elS.textContent = '00';
+      return;
+    }
+    var s = Math.floor(diff / 1000);
+    var d = Math.floor(s / 86400); s -= d * 86400;
+    var h = Math.floor(s / 3600); s -= h * 3600;
+    var m = Math.floor(s / 60); s -= m * 60;
+    elD.textContent = pad(d); elH.textContent = pad(h); elM.textContent = pad(m); elS.textContent = pad(s);
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  /* one love note a day, picked by the date so it's the same for every
+     guest on a given day but unpredictable from one day to the next */
+  var QUOTES = [
+    "Some stories start with once upon a time. Ours started with a yes.",
+    "Every great love is, in the end, a love story told in ordinary days.",
+    "Find someone who feels like home and calls it an adventure anyway.",
+    "Love isn't the loud part of the story. It's the part that stays.",
+    "Two people, one decision, a lifetime of small good mornings.",
+    "The best plans are the ones made for two.",
+    "Some hearts just know how to find their way to each other.",
+    "Love is a promise made quietly and kept loudly, every single day.",
+    "A good marriage is two people choosing each other, again and again.",
+    "Home isn't a place. It's whoever makes the ordinary feel extraordinary.",
+    "Forever is just a very long string of todays, spent well.",
+    "The right person makes patience feel like the easiest thing in the world.",
+    "Love doesn't find the perfect person. It makes an imperfect one feel perfect.",
+    "Some things are worth waiting for. This was always one of them.",
+    "A wedding is one day. A marriage is every day after it.",
+    "Two names, one future, countless small moments still unwritten.",
+    "Real love is quiet certainty dressed up as butterflies.",
+    "The best kind of love sounds like laughter in another room.",
+    "Together looks good on us.",
+    "Love is choosing someone's heart every morning, no matter the weather.",
+    "Some people make the whole world feel like a kinder place. This is one of them.",
+    "We didn't fall in love. We walked into it, eyes open, on purpose.",
+    "A good partnership is built from a thousand small kindnesses.",
+    "The quietest moments together are often the loudest proof of love.",
+    "Love is the one plot twist you hope you never see coming.",
+    "Here's to the two of us becoming an us.",
+    "Soulmates aren't found. They're built, one ordinary Tuesday at a time.",
+    "The best love stories don't need a dramatic score, just honesty.",
+    "To love and be loved in return is the whole plot, really.",
+    "Some love stories are loud. Ours is steady, and that's better.",
+    "A life shared is twice the joy and half the weight.",
+    "Love is choosing the same person, in every version of yourself, forever.",
+    "The best decisions are the ones you never have to think twice about.",
+    "Two hearts, one home, endless small reasons to stay.",
+    "We found our favorite person. Everything after felt obvious.",
+    "Some things don't need an explanation. They just need a date on the calendar.",
+    "Love grows best in the small, unglamorous, everyday moments.",
+    "A good marriage is built, brick by brick, out of patience and laughter.",
+    "Here's to a lifetime of inside jokes and shared blankets.",
+    "True love doesn't rush. It arrives, settles in, and stays.",
+    "The best stories are the ones you get to keep writing together.",
+    "Some people complete a sentence you didn't know you were saying.",
+    "Love is a quiet kind of brave.",
+    "This is the beginning of the best chapter yet.",
+    "Every ending we've had led quietly here.",
+    "A good love story needs no grand gestures, just consistent ones.",
+    "Marriage: proof that two ordinary people can build something extraordinary.",
+    "Some things are simply meant to be two.",
+    "Love found its favorite address, and it's a shared one.",
+    "The rest of our story starts on the 4th.",
+    "A love like this doesn't need an explanation, only a date.",
+    "We built something steady out of two restless hearts.",
+    "Every love story is beautiful, but ours is our favorite.",
+    "The best adventures start with someone willing to go first.",
+    "Some things are worth planning a whole life around.",
+    "Love is the quiet decision to stay, made new every morning.",
+    "Two people who make patience look easy and distance feel small.",
+    "A heart finds its match the way a key finds its lock: quietly, then all at once.",
+    "This is what showing up for each other looks like, year after year."
+  ];
+
+  /* a fixed shuffle of the quote bank, walked one step per calendar day —
+     every quote lands exactly once before the order repeats, so the
+     countdown to the wedding never shows the same line twice */
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function shuffledOrder(len, seed){
+    var rand = mulberry32(seed);
+    var arr = [];
+    for(var i = 0; i < len; i++) arr.push(i);
+    for(var i = len - 1; i > 0; i--){
+      var j = Math.floor(rand() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function dailyIndex(len){
+    var epoch = new Date(2026, 0, 1); // fixed reference date, local midnight
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var daysSince = Math.round((today - epoch) / 86400000);
+    var order = shuffledOrder(len, 20261204);
+    var slot = ((daysSince % len) + len) % len;
+    return order[slot];
+  }
+
+  var quoteTextEl = document.getElementById('quoteText');
+  if(quoteTextEl) quoteTextEl.textContent = '“' + QUOTES[dailyIndex(QUOTES.length)] + '”';
+
+  var paperBtn = document.getElementById('paperBtn');
+  var quoteWidget = document.getElementById('quoteWidget');
+  if(paperBtn && quoteWidget){
+    paperBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var isOpen = paperBtn.getAttribute('aria-expanded') === 'true';
+      paperBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      quoteWidget.classList.toggle('revealed', !isOpen);
+    });
+  }
+
+  /* hand-drawn line-art flower: one petal + vein shape, repeated by
+     rotation and traced in with a classic stroke-dashoffset "pen draw" */
+  (function buildFlower(){
+    var NS = 'http://www.w3.org/2000/svg';
+    var petalsG = document.getElementById('flowerPetals');
+    var veinsG = document.getElementById('flowerVeins');
+    var stamensG = document.getElementById('flowerStamens');
+    var flowerEl = document.getElementById('flower');
+    if(!petalsG || !veinsG || !stamensG) return;
+
+    var petalD = 'M100,100 C86,80 80,50 94,26 C97,23 103,23 106,26 C120,50 114,80 100,100 Z';
+    var veinD = 'M100,97 C100,80 100,55 100,30';
+    var drawItems = [];
+
+    for(var i = 0; i < 6; i++){
+      var angle = i * 60;
+      var petal = document.createElementNS(NS, 'path');
+      petal.setAttribute('d', petalD);
+      petal.setAttribute('transform', 'rotate(' + angle + ' 100 100)');
+      petal.setAttribute('class', 'flower-line');
+      petalsG.appendChild(petal);
+      drawItems.push({ el: petal, delay: i * 0.12, dur: 1.05 });
+
+      var vein = document.createElementNS(NS, 'path');
+      vein.setAttribute('d', veinD);
+      vein.setAttribute('transform', 'rotate(' + angle + ' 100 100)');
+      vein.setAttribute('class', 'flower-line flower-vein');
+      veinsG.appendChild(vein);
+      drawItems.push({ el: vein, delay: i * 0.12 + 0.4, dur: .7 });
+    }
+
+    var stamenAngles = [-26, -12, 0, 12, 26];
+    var anthers = [];
+    stamenAngles.forEach(function(a, idx){
+      var rad = a * Math.PI / 180;
+      var x2 = 100 + 19 * Math.sin(rad);
+      var y2 = 100 - 19 * Math.cos(rad);
+      var s = document.createElementNS(NS, 'path');
+      s.setAttribute('d', 'M100,100 L' + x2.toFixed(1) + ',' + y2.toFixed(1));
+      s.setAttribute('class', 'flower-line flower-stamen');
+      stamensG.appendChild(s);
+      drawItems.push({ el: s, delay: 1.05 + idx * 0.05, dur: .4 });
+
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', x2.toFixed(1));
+      c.setAttribute('cy', y2.toFixed(1));
+      c.setAttribute('r', '2.3');
+      c.setAttribute('class', 'flower-anther');
+      stamensG.appendChild(c);
+      anthers.push({ el: c, delay: 1.3 + idx * 0.05 });
+    });
+
+    if(reduce){
+      drawItems.forEach(function(item){ item.el.style.strokeDashoffset = 0; });
+      anthers.forEach(function(a){ a.el.style.opacity = 1; });
+      if(flowerEl) flowerEl.classList.add('sway');
+      return;
+    }
+
+    drawItems.forEach(function(item){
+      var len = 0;
+      try{ len = item.el.getTotalLength(); }catch(e){ len = 160; }
+      item.el.style.strokeDasharray = len;
+      item.el.style.strokeDashoffset = len;
+    });
+
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        drawItems.forEach(function(item){
+          item.el.style.transition = 'stroke-dashoffset ' + item.dur + 's cubic-bezier(.4,.08,.2,1) ' + item.delay + 's';
+          item.el.style.strokeDashoffset = 0;
+        });
+        anthers.forEach(function(a){
+          a.el.style.transition = 'opacity .4s ease ' + a.delay + 's';
+          a.el.style.opacity = 1;
+        });
+      });
+    });
+
+    setTimeout(function(){ if(flowerEl) flowerEl.classList.add('sway'); }, 2000);
+  })();
+
+  /* light / dark print toggle, remembered per viewer */
+  (function themeSwitch(){
+    var root = document.documentElement;
+    var toggle = document.getElementById('themeToggle');
+    var label = document.getElementById('themeToggleLabel');
+    if(!toggle || !label) return;
+
+    function apply(mode){
+      if(mode === 'light'){
+        root.setAttribute('data-mode', 'light');
+        toggle.setAttribute('aria-checked', 'true');
+        toggle.setAttribute('aria-label', 'Switch to dark mode');
+        label.textContent = 'Dark Mode';
+      } else {
+        root.removeAttribute('data-mode');
+        toggle.setAttribute('aria-checked', 'false');
+        toggle.setAttribute('aria-label', 'Switch to light mode');
+        label.textContent = 'Light Mode';
+      }
+    }
+
+    var saved = null;
+    try{ saved = localStorage.getItem('std-rs-mode'); }catch(e){}
+    apply(saved === 'dark' ? 'dark' : 'light');
+
+    toggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      var next = toggle.getAttribute('aria-checked') === 'true' ? 'dark' : 'light';
+      apply(next);
+      try{ localStorage.setItem('std-rs-mode', next); }catch(err){}
+    });
+  })();
+
+  /* gentle film-grain flicker */
+  try{
+    var turb = document.querySelector('#filmGrain feTurbulence');
+    var seed = 3;
+    if(!reduce && turb){
+      setInterval(function(){ seed = (seed + 1) % 9; turb.setAttribute('seed', String(seed)); }, 160);
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
